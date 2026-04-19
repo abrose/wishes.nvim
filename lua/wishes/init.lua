@@ -1,3 +1,4 @@
+local agents = require("wishes.agents")
 local config = require("wishes.config")
 local core = require("wishes.core")
 local display = require("wishes.display")
@@ -262,7 +263,67 @@ function M.clear()
   end)
 end
 
-local SUBCOMMANDS = { "add", "edit", "delete", "clear" }
+function M.install()
+  local cfg, root = require_setup()
+  if not cfg then return end
+
+  local detected = agents.detect(root)
+  if #detected == 0 then
+    vim.notify("wishes: no agents detected", vim.log.levels.WARN)
+    return
+  end
+
+  vim.ui.select(detected, {
+    prompt = "Install instructions for:",
+    format_item = function(key) return agents.agent_name(key) end,
+  }, function(choice)
+    if not choice then return end
+    local ok, err = agents.install(root, choice)
+    if not ok then
+      vim.notify("wishes: " .. (err or "install failed"), vim.log.levels.ERROR)
+      return
+    end
+    vim.notify(string.format("wishes: installed %s (%s)",
+      agents.agent_name(choice), agents.agent_target(choice)))
+  end)
+end
+
+function M.uninstall()
+  local cfg, root = require_setup()
+  if not cfg then return end
+
+  local installed = {}
+  for _, key in ipairs(agents.list_agent_keys()) do
+    local target = agents.agent_target(key)
+    if target and vim.uv.fs_stat(root .. "/" .. target) then
+      table.insert(installed, key)
+    end
+  end
+
+  if #installed == 0 then
+    vim.notify("wishes: no agents appear to be installed here")
+    return
+  end
+
+  vim.ui.select(installed, {
+    prompt = "Uninstall instructions for:",
+    format_item = function(key) return agents.agent_name(key) end,
+  }, function(choice)
+    if not choice then return end
+    local ok, err = agents.uninstall(root, choice)
+    if ok == nil then
+      vim.notify("wishes: " .. (err or "uninstall failed"), vim.log.levels.ERROR)
+      return
+    end
+    if ok == false then
+      vim.notify("wishes: " .. agents.agent_name(choice) .. " was not installed")
+      return
+    end
+    vim.notify("wishes: uninstalled " .. agents.agent_name(choice))
+  end)
+end
+
+local SUBCOMMANDS = { "add", "edit", "delete", "clear", "install", "uninstall" }
 
 function M.dispatch(opts)
   local subcommand = opts.fargs and opts.fargs[1]
@@ -309,6 +370,7 @@ local function register_keymaps(cfg)
   nmap(keys.add, function() M.add() end, "wishes: add")
   nmap(keys.edit, function() M.edit() end, "wishes: edit")
   nmap(keys.delete, function() M.delete() end, "wishes: delete")
+  nmap(keys.install, function() M.install() end, "wishes: install agent instructions")
 
   if keys.add then
     vim.keymap.set("x", keys.add, function()
