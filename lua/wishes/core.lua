@@ -86,6 +86,107 @@ function M.parse_line(raw)
   }
 end
 
+function M.format_line(wish)
+  if type(wish) ~= "table" then
+    return nil, "wish must be a table"
+  end
+  if type(wish.category) ~= "string" or wish.category == "" then
+    return nil, "wish.category must be a non-empty string"
+  end
+  if type(wish.path) ~= "string" or wish.path == "" then
+    return nil, "wish.path must be a non-empty string"
+  end
+  if type(wish.line_start) ~= "number" then
+    return nil, "wish.line_start must be a number"
+  end
+  if type(wish.text) ~= "string" then
+    return nil, "wish.text must be a string"
+  end
+  if wish.text:find("\n") then
+    return nil, "wish.text cannot contain newlines"
+  end
+
+  local line_end = wish.line_end or wish.line_start
+  local line_ref
+  if line_end ~= wish.line_start then
+    line_ref = string.format("%d-%d", wish.line_start, line_end)
+  else
+    line_ref = tostring(wish.line_start)
+  end
+
+  return string.format(
+    "[%s] %s:%s%s%s",
+    wish.category,
+    wish.path,
+    line_ref,
+    SEPARATOR,
+    wish.text
+  )
+end
+
+function M.parse_content(content)
+  local wishes = {}
+  local warnings = {}
+  local lineno = 0
+
+  for line in (content .. "\n"):gmatch("([^\n]*)\n") do
+    lineno = lineno + 1
+    local stripped = vim.trim(line)
+    if stripped ~= "" and stripped:sub(1, 1) ~= "#" then
+      local wish = M.parse_line(line)
+      if wish then
+        table.insert(wishes, wish)
+      else
+        table.insert(warnings, string.format("line %d: malformed: %s", lineno, stripped))
+      end
+    end
+  end
+
+  return wishes, warnings
+end
+
+function M.read_file(path)
+  local f, err = io.open(path, "r")
+  if not f then
+    return nil, err
+  end
+  local content = f:read("*a")
+  f:close()
+  return M.parse_content(content)
+end
+
+function M.write_file(path, wishes)
+  local lines = {}
+  for i, wish in ipairs(wishes) do
+    local line, err = M.format_line(wish)
+    if not line then
+      return nil, string.format("wish at index %d: %s", i, err)
+    end
+    table.insert(lines, line)
+  end
+
+  local dir = vim.fs.dirname(path)
+  if dir and dir ~= "" then
+    vim.fn.mkdir(dir, "p")
+  end
+
+  local content = table.concat(lines, "\n")
+  if #lines > 0 then
+    content = content .. "\n"
+  end
+
+  local f, open_err = io.open(path, "w")
+  if not f then
+    return nil, open_err
+  end
+  local ok, write_err = f:write(content)
+  f:close()
+  if not ok then
+    return nil, write_err
+  end
+  return true
+end
+
 M.DEFAULT_ROOT_MARKERS = DEFAULT_ROOT_MARKERS
 M.SEPARATOR = SEPARATOR
 
