@@ -1,7 +1,14 @@
 local config = require("wishes.config")
 local core = require("wishes.core")
+local display = require("wishes.display")
 
 local M = {}
+
+local function refresh_display()
+  if M._root then
+    display.refresh_all(M._config, M._root)
+  end
+end
 
 function M.compute_config(user_opts, start_dir, stop_at)
   user_opts = user_opts or {}
@@ -138,6 +145,7 @@ function M.add(opts)
         return
       end
       notify_warnings(warnings)
+      refresh_display()
       local range = line_start == line_end
         and tostring(line_start)
         or (line_start .. "-" .. line_end)
@@ -188,6 +196,7 @@ function M.edit(opts)
       vim.notify("wishes: wish not found (did the file change?)", vim.log.levels.WARN)
       return
     end
+    refresh_display()
     vim.notify("wishes: updated")
   end)
 end
@@ -227,6 +236,7 @@ function M.delete(opts)
       vim.notify("wishes: " .. del_err, vim.log.levels.ERROR)
       return
     end
+    refresh_display()
     vim.notify("wishes: deleted " .. count .. " wish(es)")
   end)
 end
@@ -247,6 +257,7 @@ function M.clear()
       vim.notify("wishes: " .. err, vim.log.levels.ERROR)
       return
     end
+    refresh_display()
     vim.notify("wishes: cleared")
   end)
 end
@@ -324,6 +335,8 @@ function M.setup(opts)
   M._root_via = result.via
 
   register_keymaps(M._config)
+  display.setup_autocmds(M._config, M._root)
+  refresh_display()
 
   if opts.dev then
     vim.api.nvim_create_user_command("WishesReload", function()
