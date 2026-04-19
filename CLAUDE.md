@@ -63,16 +63,32 @@ project-level `.wishes` TOML file. Project config wins for `wishes_file` and
 
 ## Dev commands
 
-No build, lint, or test harness is in place yet. Typical Neovim-plugin toolchain
-options to pick from when implementation starts:
+- `make test` — runs the full test suite headlessly via plenary.nvim's busted
+  harness. Bootstraps plenary into `/tmp/plenary.nvim` on first run (override
+  with the `PLENARY_DIR` env var). Config in `tests/minimal_init.lua`; specs in
+  `tests/*_spec.lua`.
+- Format/lint aren't wired up yet. When we add them, update this section.
 
-- Format: `stylua`.
-- Lint: `luacheck` or `selene`.
-- Test: `plenary.nvim`'s busted-style harness, run headless via
-  `nvim --headless -c "PlenaryBustedDirectory tests/"`.
+### Interactive dev loop
 
-**Decide these with Chebu before writing the first test, then update this section
-with the actual commands.** Don't invent commands that don't exist in the repo.
+Point your plugin manager at the local checkout (e.g., lazy.nvim spec with
+`dir = "~/workspace/private/wishes.nvim", dev = true, opts = { dev = true }`).
+Pass `dev = true` to `setup()` to register `:WishesReload`, which re-requires
+all `wishes.*` modules, clears the `wishes` augroup, clears the `wishes`
+extmark namespace in every loaded buffer, and re-invokes `setup()` with the
+saved opts. Use this instead of restarting Neovim after edits.
+
+### Reload discipline (applies to all new code)
+
+Every live resource the plugin creates must be reload-safe:
+
+- Autocmds live in a named augroup created with `clear = true`.
+- Signs / virtual text / extmarks use the single `wishes` namespace so one
+  `nvim_buf_clear_namespace` call wipes everything.
+- User commands: tear down with `pcall(vim.api.nvim_del_user_command, ...)` on
+  reload before re-registering, or guard re-registration with a
+  `nvim_get_commands` check. Otherwise repeat `setup()` calls error on the
+  second registration.
 
 ## Scope guardrails
 
