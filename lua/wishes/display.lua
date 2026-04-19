@@ -104,7 +104,7 @@ function M.setup_autocmds(user_config, root)
     return
   end
   local group = vim.api.nvim_create_augroup("wishes", { clear = true })
-  vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost" }, {
+  vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "BufWritePost" }, {
     group = group,
     callback = function(args)
       M.refresh(args.buf, user_config, root)

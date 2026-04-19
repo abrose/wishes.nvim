@@ -155,6 +155,36 @@ function M.add(opts)
   end)
 end
 
+function M.edit_wish(user_config, root, wish)
+  vim.ui.input({ prompt = "Note: ", default = wish.text }, function(new_text)
+    if not new_text or vim.trim(new_text) == "" then return end
+
+    local wishes_path = M.current_wishes_path(user_config, root)
+    local count, upd_err = core.update_wishes(
+      wishes_path,
+      function(w)
+        return w.path == wish.path
+          and w.line_start == wish.line_start
+          and w.line_end == wish.line_end
+          and w.text == wish.text
+      end,
+      function(w)
+        return vim.tbl_extend("force", w, { text = new_text })
+      end
+    )
+    if not count then
+      vim.notify("wishes: " .. upd_err, vim.log.levels.ERROR)
+      return
+    end
+    if count == 0 then
+      vim.notify("wishes: wish not found (did the file change?)", vim.log.levels.WARN)
+      return
+    end
+    refresh_display()
+    vim.notify("wishes: updated")
+  end)
+end
+
 function M.edit(opts)
   opts = opts or {}
   local cfg, root = require_setup()
@@ -174,31 +204,29 @@ function M.edit(opts)
     return
   end
 
-  vim.ui.input({ prompt = "Note: ", default = wish.text }, function(new_text)
-    if not new_text or vim.trim(new_text) == "" then return end
+  M.edit_wish(cfg, root, wish)
+end
 
-    local wishes_path = M.current_wishes_path(cfg, root)
-    local count, upd_err = core.update_wishes(
-      wishes_path,
-      function(w)
-        return w.path == wish.path
-          and w.line_start == wish.line_start
-          and w.line_end == wish.line_end
-      end,
-      function(w)
-        return vim.tbl_extend("force", w, { text = new_text })
-      end
-    )
+function M.delete_wish(user_config, root, wish)
+  local preview = wish.text:sub(1, 50)
+  vim.ui.select({ "Yes", "No" }, {
+    prompt = "Delete: " .. preview,
+  }, function(choice)
+    if choice ~= "Yes" then return end
+
+    local wishes_path = M.current_wishes_path(user_config, root)
+    local count, del_err = core.delete_wishes(wishes_path, function(w)
+      return w.path == wish.path
+        and w.line_start == wish.line_start
+        and w.line_end == wish.line_end
+        and w.text == wish.text
+    end)
     if not count then
-      vim.notify("wishes: " .. upd_err, vim.log.levels.ERROR)
-      return
-    end
-    if count == 0 then
-      vim.notify("wishes: wish not found (did the file change?)", vim.log.levels.WARN)
+      vim.notify("wishes: " .. del_err, vim.log.levels.ERROR)
       return
     end
     refresh_display()
-    vim.notify("wishes: updated")
+    vim.notify("wishes: deleted " .. count .. " wish(es)")
   end)
 end
 
@@ -221,25 +249,7 @@ function M.delete(opts)
     return
   end
 
-  local preview = wish.text:sub(1, 50)
-  vim.ui.select({ "Yes", "No" }, {
-    prompt = "Delete: " .. preview,
-  }, function(choice)
-    if choice ~= "Yes" then return end
-
-    local wishes_path = M.current_wishes_path(cfg, root)
-    local count, del_err = core.delete_wishes(wishes_path, function(w)
-      return w.path == wish.path
-        and w.line_start == wish.line_start
-        and w.line_end == wish.line_end
-    end)
-    if not count then
-      vim.notify("wishes: " .. del_err, vim.log.levels.ERROR)
-      return
-    end
-    refresh_display()
-    vim.notify("wishes: deleted " .. count .. " wish(es)")
-  end)
+  M.delete_wish(cfg, root, wish)
 end
 
 function M.clear()
@@ -261,6 +271,16 @@ function M.clear()
     refresh_display()
     vim.notify("wishes: cleared")
   end)
+end
+
+function M.list()
+  local cfg, root = require_setup()
+  if not cfg then return end
+  local picker = require("wishes.picker")
+  local ok, err = picker.show(cfg, root)
+  if not ok and err then
+    vim.notify("wishes: " .. err, vim.log.levels.ERROR)
+  end
 end
 
 function M.install()
@@ -323,7 +343,7 @@ function M.uninstall()
   end)
 end
 
-local SUBCOMMANDS = { "add", "edit", "delete", "clear", "install", "uninstall" }
+local SUBCOMMANDS = { "add", "edit", "delete", "list", "clear", "install", "uninstall" }
 
 function M.dispatch(opts)
   local subcommand = opts.fargs and opts.fargs[1]
@@ -370,6 +390,7 @@ local function register_keymaps(cfg)
   nmap(keys.add, function() M.add() end, "wishes: add")
   nmap(keys.edit, function() M.edit() end, "wishes: edit")
   nmap(keys.delete, function() M.delete() end, "wishes: delete")
+  nmap(keys.list, function() M.list() end, "wishes: list")
   nmap(keys.install, function() M.install() end, "wishes: install agent instructions")
 
   if keys.add then
