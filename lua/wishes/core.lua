@@ -187,6 +187,87 @@ function M.write_file(path, wishes)
   return true
 end
 
+function M.read_file_or_empty(path)
+  if vim.uv.fs_stat(path) then
+    return M.read_file(path)
+  end
+  return {}, {}
+end
+
+function M.wish_matches_location(wish, file, line)
+  if wish.path ~= file then
+    return false
+  end
+  local start_line = wish.line_start
+  local end_line = wish.line_end or start_line
+  return start_line <= line and line <= end_line
+end
+
+function M.add_wish(path, wish)
+  local existing, warnings_or_err = M.read_file_or_empty(path)
+  if not existing then
+    return nil, warnings_or_err
+  end
+  table.insert(existing, wish)
+  local ok, err = M.write_file(path, existing)
+  if not ok then
+    return nil, err
+  end
+  return true, warnings_or_err
+end
+
+function M.delete_wishes(path, predicate)
+  local existing, warnings_or_err = M.read_file_or_empty(path)
+  if not existing then
+    return nil, warnings_or_err
+  end
+
+  local kept = {}
+  local count = 0
+  for _, wish in ipairs(existing) do
+    if predicate(wish) then
+      count = count + 1
+    else
+      table.insert(kept, wish)
+    end
+  end
+
+  if count == 0 then
+    return 0, warnings_or_err
+  end
+
+  local ok, err = M.write_file(path, kept)
+  if not ok then
+    return nil, err
+  end
+  return count, warnings_or_err
+end
+
+function M.update_wishes(path, predicate, mutator)
+  local existing, warnings_or_err = M.read_file_or_empty(path)
+  if not existing then
+    return nil, warnings_or_err
+  end
+
+  local count = 0
+  for i, wish in ipairs(existing) do
+    if predicate(wish) then
+      existing[i] = mutator(wish)
+      count = count + 1
+    end
+  end
+
+  if count == 0 then
+    return 0, warnings_or_err
+  end
+
+  local ok, err = M.write_file(path, existing)
+  if not ok then
+    return nil, err
+  end
+  return count, warnings_or_err
+end
+
 M.DEFAULT_ROOT_MARKERS = DEFAULT_ROOT_MARKERS
 M.SEPARATOR = SEPARATOR
 
