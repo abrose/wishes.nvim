@@ -201,7 +201,9 @@ Each agent gets the same core instructions adapted to its format. The installed 
 ```markdown
 # Wishes
 
-This project uses wishes.nvim for code review annotations.
+This project uses wishes.nvim for code review annotations. The wishes file
+contains feedback items the user left while reviewing code. Your job is to
+address them in a collaborative, reviewable way — not as one big batch.
 
 ## Wishes file
 
@@ -219,22 +221,34 @@ Each line is a wish:
 Categories: fix, question, refactor, note (projects may define additional ones).
 Lines starting with # are comments. Empty lines are ignored.
 
-## When you find a wishes file
+## Workflow
 
-1. Read every wish
-2. Address each one in the relevant file, guided by the category:
-   - [fix]: this is a bug or mistake — correct it
-   - [question]: answer the question in a comment or resolve the ambiguity in code
-   - [refactor]: restructure the code as described
-   - [note]: consider the suggestion, apply if it improves the code
-3. After addressing ALL wishes, delete the wishes file
+**Do not start changing code immediately.** Follow these steps in order.
+
+1. **Read and summarize.** Read every wish. Summarize them back to the user —
+   one line per wish, grouped by file. This confirms understanding before code
+   changes.
+2. **Discuss before acting.** If any wish is ambiguous, ask. Wait for the user's
+   go-ahead before making changes.
+3. **Group related wishes.** Wishes that logically belong together (same function,
+   same coherent change) may be addressed as one unit. Unrelated wishes must be
+   addressed separately.
+4. **Address one at a time.** For each wish (or tightly-coupled group):
+   - Make the change, guided by the category ([fix] = bug; [question] = answer
+     or resolve; [refactor] = restructure; [note] = consider, apply or skip with
+     reason).
+   - Remove the addressed wish(es) from the wishes file.
+   - Pause and let the user review.
+   - Wait for the go-ahead before continuing.
+5. **Finish.** When all wishes are addressed and the file is empty, delete it.
 
 ## Important
 
-- File paths in wishes are relative to the project root
-- Line numbers may have shifted if you've made prior edits — use the content
-  and surrounding context to locate the right spot, not just the line number
-- If a wish is unclear, make your best judgment and note what you did
+- File paths in wishes are relative to the project root.
+- Line numbers may have shifted if you've made prior edits — use content and
+  surrounding context to locate the right spot, not just the line number.
+- If a wish is unclear, ask rather than guess.
+- Prefer smaller, reviewable changes over comprehensive sweeps.
 ```
 
 **Claude Code specifics:** The install target is `.claude/commands/wishes.md`. This registers `/wishes` as a project slash command. The content should be the core instructions above with a description line at the top (e.g., `Read and address all wishes`). The user then just types `/wishes` in Claude Code to trigger a review pass.

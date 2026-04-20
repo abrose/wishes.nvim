@@ -91,7 +91,7 @@ describe("wishes.agents.install (file mode)", function()
 		local content = read(tmp .. "/.claude/commands/wishes.md")
 		assert.is_not_nil(content)
 		assert.truthy(content:find("^---"))
-		assert.truthy(content:find("description: Read and address all wishes"))
+		assert.truthy(content:find("description: Review wishes and address them one at a time"))
 		assert.truthy(content:find("# Wishes"))
 	end)
 
