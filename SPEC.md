@@ -319,8 +319,5 @@ These are directions to explore after the core plugin is stable and tested. Do n
 - **claudecode.nvim integration:** For Claude Code users, add an optional integration with claudecode.nvim's `:ClaudeCodeSend` — select the summary output and send it directly to the running Claude Code session without switching terminals.
 - **Aider `# AI:` bridge:** Offer an export mode that writes wishes as inline `# AI:` comments directly in the source files, for users who prefer Aider's `--watch-files` auto-trigger workflow.
 - **code-review.nvim interop:** Look at code-review.nvim's annotation UX (threaded discussions, richer editing) as inspiration or as a direct integration target — their annotation model could feed into the wishes file.
-- **Auto-trigger on save:** Watch the wishes file for external changes (e.g., agent deleting it after addressing all items) and auto-refresh the display / notify the user.
 - **Diff-aware wishes:** When the agent has made changes, show a split view comparing the annotated line's original state vs. the current state to help the user decide during cleanup whether a wish was addressed.
-- **Quickfix integration:** Populate the quickfix list with all wishes for `:cnext`/`:cprev` navigation.
-- **Summary command:** Print a formatted summary of all wishes grouped by file — useful as a quick check before handing off to the agent.
 - **Interactive cleanup:** Walk through wishes one by one (showing the wish vs. current code state), picking keep/remove/skip for each. Lets the user prune after the agent has acted on feedback.

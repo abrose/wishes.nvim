@@ -250,6 +250,70 @@ describe("wishes.display.render with custom hl overrides", function()
   end)
 end)
 
+describe("wishes.display watcher", function()
+  local tmp
+
+  before_each(function()
+    tmp = vim.fn.tempname()
+    vim.fn.mkdir(tmp, "p")
+    display.stop_watcher()
+  end)
+
+  after_each(function()
+    display.stop_watcher()
+    vim.fn.delete(tmp, "rf")
+  end)
+
+  it("stop_watcher is safe to call when no watcher is running", function()
+    assert.has_no.errors(function() display.stop_watcher() end)
+  end)
+
+  it("setup_autocmds starts a timer when auto_refresh is true and root is set", function()
+    display.setup_autocmds({
+      wishes_file = ".wishes.md",
+      auto_refresh = true,
+      categories = {},
+    }, tmp)
+    assert.is_not_nil(_G._wishes_display.timer)
+  end)
+
+  it("setup_autocmds does not start a timer when auto_refresh is false", function()
+    display.setup_autocmds({
+      wishes_file = ".wishes.md",
+      auto_refresh = false,
+      categories = {},
+    }, tmp)
+    assert.is_nil(_G._wishes_display.timer)
+  end)
+
+  it("setup_autocmds does not start a timer when root is nil", function()
+    display.setup_autocmds({
+      wishes_file = ".wishes.md",
+      auto_refresh = true,
+      categories = {},
+    }, nil)
+    assert.is_nil(_G._wishes_display.timer)
+  end)
+
+  it("repeated setup replaces the running timer, not stacks", function()
+    display.setup_autocmds({
+      wishes_file = ".wishes.md",
+      auto_refresh = true,
+      categories = {},
+    }, tmp)
+    local first = _G._wishes_display.timer
+    display.setup_autocmds({
+      wishes_file = ".wishes.md",
+      auto_refresh = true,
+      categories = {},
+    }, tmp)
+    local second = _G._wishes_display.timer
+    assert.is_not_nil(first)
+    assert.is_not_nil(second)
+    assert.not_equal(tostring(first), tostring(second))
+  end)
+end)
+
 describe("wishes.display.clear", function()
   it("removes all wishes extmarks in a buffer", function()
     local bufnr = vim.api.nvim_create_buf(false, true)

@@ -100,6 +100,7 @@ To use a local clone for development:
 | `:Wishes edit`      | Edit the wish on the current line                      |
 | `:Wishes delete`    | Delete the wish on the current line                    |
 | `:Wishes list`      | Browse all wishes (snacks / telescope / qflist picker) |
+| `:Wishes summary`   | Print a grouped-by-file summary of all wishes          |
 | `:Wishes clear`     | Delete the entire wishes file (with confirmation)      |
 | `:Wishes install`   | Install agent instructions into the detected agent     |
 | `:Wishes uninstall` | Remove installed agent instructions                    |
@@ -183,7 +184,10 @@ require("wishes").setup({
   -- Prefix shown before the virtual text at end of line.
   virtual_text_prefix = " ▎ ",
 
-  -- Re-render wishes on BufEnter / BufWinEnter / BufWritePost.
+  -- When true:
+  --   * Re-render wishes on BufEnter / BufWinEnter / BufWritePost / FileChangedShellPost
+  --   * Poll the wishes file once a second to catch external changes
+  --     (e.g., the agent deleted addressed wishes)
   auto_refresh = true,
 
   -- Enables :WishesReload (plugin development only).

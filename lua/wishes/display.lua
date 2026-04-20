@@ -2,6 +2,10 @@ local core = require("wishes.core")
 
 local M = {}
 
+-- State that must survive plenary.reload so we can stop previous watchers.
+_G._wishes_display = _G._wishes_display or {}
+local state = _G._wishes_display
+
 local NAMESPACE = "wishes"
 local cached_ns
 
@@ -123,6 +127,40 @@ function M.refresh_all(user_config, root)
   end
 end
 
+function M.stop_watcher()
+  if state.timer then
+    pcall(state.timer.stop, state.timer)
+    pcall(state.timer.close, state.timer)
+    state.timer = nil
+  end
+end
+
+local function start_watcher(user_config, root)
+  M.stop_watcher()
+  if not user_config.auto_refresh or not root then
+    return
+  end
+
+  local wishes_path = root .. "/" .. user_config.wishes_file
+  local stat = vim.uv.fs_stat(wishes_path)
+  local last_mtime = stat and stat.mtime.sec or 0
+
+  local timer = vim.uv.new_timer()
+  if not timer then
+    return
+  end
+  state.timer = timer
+
+  timer:start(1000, 1000, vim.schedule_wrap(function()
+    local s = vim.uv.fs_stat(wishes_path)
+    local current = s and s.mtime.sec or 0
+    if current ~= last_mtime then
+      last_mtime = current
+      M.refresh_all(user_config, root)
+    end
+  end))
+end
+
 function M.setup_autocmds(user_config, root)
   local group = vim.api.nvim_create_augroup("wishes", { clear = true })
 
@@ -134,12 +172,19 @@ function M.setup_autocmds(user_config, root)
   })
 
   if user_config.auto_refresh and root then
-    vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "BufWritePost" }, {
+    vim.api.nvim_create_autocmd({
+      "BufEnter",
+      "BufWinEnter",
+      "BufWritePost",
+      "FileChangedShellPost",
+    }, {
       group = group,
       callback = function(args)
         M.refresh(args.buf, user_config, root)
       end,
     })
+
+    start_watcher(user_config, root)
   end
 end
 

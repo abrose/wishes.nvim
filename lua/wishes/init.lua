@@ -273,6 +273,56 @@ function M.clear()
   end)
 end
 
+function M.build_summary(wishes)
+  local by_file = {}
+  for _, w in ipairs(wishes) do
+    by_file[w.path] = by_file[w.path] or {}
+    table.insert(by_file[w.path], w)
+  end
+
+  local file_count = vim.tbl_count(by_file)
+  local files = vim.tbl_keys(by_file)
+  table.sort(files)
+
+  local lines = {
+    string.format("Wishes (%d total across %d file%s)",
+      #wishes, file_count, file_count == 1 and "" or "s"),
+    "",
+  }
+
+  for _, file in ipairs(files) do
+    local group = by_file[file]
+    table.sort(group, function(a, b) return a.line_start < b.line_start end)
+    table.insert(lines, file .. " (" .. #group .. ")")
+    for _, wish in ipairs(group) do
+      local range = wish.line_start == wish.line_end
+        and tostring(wish.line_start)
+        or (wish.line_start .. "-" .. wish.line_end)
+      table.insert(lines, string.format("  [%s] :%s  %s", wish.category, range, wish.text))
+    end
+  end
+
+  return lines
+end
+
+function M.summary()
+  local cfg, root = require_setup()
+  if not cfg then return end
+  local wishes_path = M.current_wishes_path(cfg, root)
+  local wishes, err = core.read_file_or_empty(wishes_path)
+  if not wishes then
+    vim.notify("wishes: " .. err, vim.log.levels.ERROR)
+    return
+  end
+  if #wishes == 0 then
+    vim.notify("wishes: no wishes yet")
+    return
+  end
+
+  local lines = M.build_summary(wishes)
+  vim.api.nvim_echo(vim.tbl_map(function(l) return { l .. "\n" } end, lines), false, {})
+end
+
 function M.list()
   local cfg, root = require_setup()
   if not cfg then return end
@@ -343,7 +393,7 @@ function M.uninstall()
   end)
 end
 
-local SUBCOMMANDS = { "add", "edit", "delete", "list", "clear", "install", "uninstall" }
+local SUBCOMMANDS = { "add", "edit", "delete", "list", "summary", "clear", "install", "uninstall" }
 
 function M.dispatch(opts)
   local subcommand = opts.fargs and opts.fargs[1]
@@ -424,6 +474,7 @@ function M.setup(opts)
 
   if opts.dev then
     vim.api.nvim_create_user_command("WishesReload", function()
+      pcall(function() require("wishes.display").stop_watcher() end)
       require("plenary.reload").reload_module("wishes", true)
       pcall(vim.api.nvim_del_augroup_by_name, "wishes")
       local ns = vim.api.nvim_create_namespace("wishes")

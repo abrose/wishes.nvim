@@ -198,6 +198,49 @@ describe("wishes.add_wish_at / find_wish_at", function()
   end)
 end)
 
+describe("wishes.build_summary", function()
+  local wishes_mod
+
+  before_each(function()
+    reset()
+    wishes_mod = require("wishes")
+  end)
+
+  it("groups wishes by file, sorted alphabetically, with line-ordered entries", function()
+    local lines = wishes_mod.build_summary({
+      { category = "note", path = "b.lua", line_start = 5, line_end = 5, text = "second" },
+      { category = "fix", path = "a.lua", line_start = 20, line_end = 20, text = "later" },
+      { category = "fix", path = "a.lua", line_start = 1, line_end = 1, text = "earlier" },
+    })
+    assert.equals("Wishes (3 total across 2 files)", lines[1])
+    assert.equals("", lines[2])
+    assert.equals("a.lua (2)", lines[3])
+    assert.truthy(lines[4]:find("earlier"))
+    assert.truthy(lines[5]:find("later"))
+    assert.equals("b.lua (1)", lines[6])
+  end)
+
+  it("uses singular 'file' when exactly one file has wishes", function()
+    local lines = wishes_mod.build_summary({
+      { category = "fix", path = "a.lua", line_start = 1, line_end = 1, text = "x" },
+    })
+    assert.equals("Wishes (1 total across 1 file)", lines[1])
+  end)
+
+  it("shows ranges as start-end for multi-line wishes", function()
+    local lines = wishes_mod.build_summary({
+      { category = "refactor", path = "a.lua", line_start = 10, line_end = 20, text = "r" },
+    })
+    assert.truthy(lines[4]:find(":10%-20"))
+  end)
+
+  it("returns just the header for an empty list", function()
+    local lines = wishes_mod.build_summary({})
+    assert.equals("Wishes (0 total across 0 files)", lines[1])
+    assert.equals(2, #lines)
+  end)
+end)
+
 describe("wishes.dispatch / complete", function()
   before_each(reset)
 
