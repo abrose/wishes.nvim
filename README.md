@@ -15,6 +15,13 @@ wish records file, line (or range), category, and text. The plugin renders wishe
 icons + virtual text in the buffer. The agent reads the wishes file to get structured,
 location-aware feedback it can act on directly.
 
+## About the name
+
+The framing comes from Kent Beck, who uses *genie* to describe an AI coding assistant — something
+that listens to what you want and grants it. This plugin is the other half of that picture: a
+durable place to write your *wishes* down, attached to the exact line they refer to, so the genie
+can grant them without you having to re-explain the context every time.
+
 ## Requirements
 
 - Neovim >= 0.10

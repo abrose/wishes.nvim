@@ -2,7 +2,9 @@ local M = {}
 
 local INSTRUCTIONS = [[# Wishes
 
-This project uses wishes.nvim for code review annotations.
+This project uses wishes.nvim for code review annotations. The wishes file
+contains feedback items the user left while reviewing code. Your job is to
+address them in a collaborative, reviewable way — not as one big batch.
 
 ## Wishes file
 
@@ -20,26 +22,61 @@ Each line is a wish:
 Categories: fix, question, refactor, note (projects may define additional ones).
 Lines starting with # are comments. Empty lines are ignored.
 
-## When you find a wishes file
+## Workflow
 
-1. Read every wish.
-2. Address each one in the relevant file, guided by the category:
-   - [fix]: this is a bug or mistake — correct it.
-   - [question]: answer the question in a comment or resolve the ambiguity in code.
-   - [refactor]: restructure the code as described.
-   - [note]: consider the suggestion, apply if it improves the code.
-3. After addressing ALL wishes, delete the wishes file.
+**Do not start changing code immediately.** Follow these steps in order.
+
+### 1. Read and summarize
+
+Read every wish. Summarize them back to the user — one line per wish, grouped
+by file if several wishes affect the same file. This confirms you understood
+them correctly before any code changes.
+
+### 2. Discuss before acting
+
+If any wish is ambiguous or you want to propose a different interpretation,
+ask the user before making changes. Clarifying upfront is cheaper than
+producing the wrong change and rolling it back.
+
+Wait for the user's go-ahead before starting to make changes.
+
+### 3. Group related wishes
+
+Wishes that require touching the same function, or implementing a single
+coherent change together, may be addressed as one unit. Wishes that are
+independent (different files, different concerns, different logical changes)
+must be addressed separately — do not batch unrelated changes.
+
+### 4. Address one at a time
+
+For each wish (or tightly-coupled group of wishes):
+
+1. Make the change, guided by the category:
+   - `[fix]`: this is a bug or mistake — correct it.
+   - `[question]`: answer the question in a code comment, or resolve the
+     ambiguity by adjusting the code.
+   - `[refactor]`: restructure the code as described.
+   - `[note]`: consider the suggestion; apply if it improves the code, skip
+     if you disagree (and explain why).
+2. Remove the addressed wish(es) from the wishes file.
+3. Pause and let the user review the change.
+4. Wait for the user's go-ahead before moving to the next wish.
+
+### 5. Finish
+
+When all wishes are addressed and the wishes file is empty, delete it.
 
 ## Important
 
 - File paths in wishes are relative to the project root.
 - Line numbers may have shifted if you've made prior edits — use the content
   and surrounding context to locate the right spot, not just the line number.
-- If a wish is unclear, make your best judgment and note what you did.
+- If a wish is unclear, ask rather than guess.
+- Prefer smaller, reviewable changes over comprehensive sweeps.
 ]]
 
 local CLAUDE_FRONTMATTER = [[---
-description: Read and address all wishes
+description: Review wishes and address them one at a time
 ---
 
 ]]
