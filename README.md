@@ -38,7 +38,7 @@ No hard external dependencies. Everything except `:Wishes list` works out of the
 
 ```lua
 {
-  "<your-github-username>/wishes.nvim",
+  "abrose/wishes.nvim",
   event = "VeryLazy",
   opts = {},
 }
