@@ -418,6 +418,7 @@ function M.setup(opts)
   M._root_via = result.via
 
   register_keymaps(M._config)
+  display.ensure_highlight_groups(M._config)
   display.setup_autocmds(M._config, M._root)
   refresh_display()
 

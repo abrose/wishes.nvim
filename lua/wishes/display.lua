@@ -21,6 +21,30 @@ local function buffer_file(bufnr, root)
   return nil
 end
 
+function M.derived_hl_name(category_name)
+  return "WishesCategory_" .. category_name
+end
+
+function M.ensure_highlight_groups(user_config)
+  local categories = user_config.categories or {}
+  for name, cat in pairs(categories) do
+    if cat.fg or cat.bg then
+      vim.api.nvim_set_hl(0, M.derived_hl_name(name), {
+        fg = cat.fg,
+        bg = cat.bg,
+      })
+    end
+  end
+end
+
+local function resolve_hls(cat, category_name)
+  local base = cat.hl or "Comment"
+  local derived = (cat.fg or cat.bg) and M.derived_hl_name(category_name) or nil
+  return
+    cat.sign_hl or derived or base,
+    cat.text_hl or derived or base
+end
+
 function M.clear(bufnr)
   bufnr = bufnr or 0
   if vim.api.nvim_buf_is_valid(bufnr) then
@@ -42,7 +66,7 @@ function M.render(bufnr, wishes, user_config)
 
   for _, wish in ipairs(wishes) do
     local cat = categories[wish.category] or {}
-    local hl = cat.hl or "Comment"
+    local sign_hl, text_hl = resolve_hls(cat, wish.category)
     local sign = cat.sign
     if sign == "" then
       sign = nil
@@ -51,8 +75,8 @@ function M.render(bufnr, wishes, user_config)
 
     pcall(vim.api.nvim_buf_set_extmark, bufnr, namespace, line0, 0, {
       sign_text = sign,
-      sign_hl_group = hl,
-      virt_text = { { prefix .. wish.text, hl } },
+      sign_hl_group = sign_hl,
+      virt_text = { { prefix .. wish.text, text_hl } },
       virt_text_pos = "eol",
       strict = false,
     })
@@ -100,16 +124,23 @@ function M.refresh_all(user_config, root)
 end
 
 function M.setup_autocmds(user_config, root)
-  if not user_config.auto_refresh or not root then
-    return
-  end
   local group = vim.api.nvim_create_augroup("wishes", { clear = true })
-  vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "BufWritePost" }, {
+
+  vim.api.nvim_create_autocmd("ColorScheme", {
     group = group,
-    callback = function(args)
-      M.refresh(args.buf, user_config, root)
+    callback = function()
+      M.ensure_highlight_groups(user_config)
     end,
   })
+
+  if user_config.auto_refresh and root then
+    vim.api.nvim_create_autocmd({ "BufEnter", "BufWinEnter", "BufWritePost" }, {
+      group = group,
+      callback = function(args)
+        M.refresh(args.buf, user_config, root)
+      end,
+    })
+  end
 end
 
 return M

@@ -162,6 +162,16 @@ require("wishes").setup({
   },
 
   -- Sign + highlight group + label per category. Add your own.
+  -- Each category accepts:
+  --   sign     (string) icon shown in the sign column
+  --   hl       (string) highlight group used for both sign and virtual text
+  --   label    (string) display name
+  --   sign_hl  (string, optional) override just the sign column highlight
+  --   text_hl  (string, optional) override just the virtual text highlight
+  --   fg       (string, optional) inline foreground color, e.g. "#ff5555"
+  --   bg       (string, optional) inline background color, e.g. "#2d1a1a"
+  -- Resolution order for each element:
+  --   sign_hl (or text_hl) > derived hl from fg/bg > hl
   categories = {
     fix = { sign = "✗", hl = "DiagnosticError", label = "fix" },
     question = { sign = "?", hl = "DiagnosticWarn", label = "question" },
@@ -180,6 +190,32 @@ require("wishes").setup({
   dev = false,
 })
 ```
+
+### Customizing category appearance
+
+Two ways to tweak how wishes render, from quickest to most colorscheme-aware:
+
+**Inline colors** — specify `fg`/`bg` directly:
+
+```lua
+categories = {
+  fix = { sign = "🔥", fg = "#ff5555", bg = "#2d1a1a", label = "fix" },
+  perf = { sign = "", fg = "#f1fa8c", label = "perf" },
+},
+```
+
+wishes.nvim creates a derived highlight group named `WishesCategory_<name>` for each
+category that uses inline colors, and re-creates it on `ColorScheme` changes.
+
+**Named highlight groups** — more colorscheme-aware:
+
+```lua
+categories = {
+  fix = { sign = "✗", sign_hl = "DiagnosticSignError", text_hl = "DiagnosticVirtualTextError", label = "fix" },
+},
+```
+
+If both are set, `sign_hl` / `text_hl` win over `fg` / `bg`, which win over the catch-all `hl`.
 
 ## Project config: `.wishes`
 

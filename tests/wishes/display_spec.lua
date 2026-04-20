@@ -154,6 +154,102 @@ describe("wishes.display.refresh", function()
   end)
 end)
 
+describe("wishes.display.ensure_highlight_groups", function()
+  it("creates a derived hl group when a category has fg set", function()
+    display.ensure_highlight_groups({
+      categories = { fix = { fg = "#ff5555" } },
+    })
+    local hl = vim.api.nvim_get_hl(0, { name = display.derived_hl_name("fix") })
+    assert.equals(tonumber("ff5555", 16), hl.fg)
+  end)
+
+  it("creates a derived hl group when a category has bg set", function()
+    display.ensure_highlight_groups({
+      categories = { note = { bg = "#2d1a1a" } },
+    })
+    local hl = vim.api.nvim_get_hl(0, { name = display.derived_hl_name("note") })
+    assert.equals(tonumber("2d1a1a", 16), hl.bg)
+  end)
+
+  it("skips categories that have neither fg nor bg", function()
+    display.ensure_highlight_groups({
+      categories = { plain = { hl = "DiagnosticError" } },
+    })
+    local hl = vim.api.nvim_get_hl(0, { name = display.derived_hl_name("plain") })
+    assert.is_true(vim.tbl_isempty(hl))
+  end)
+end)
+
+describe("wishes.display.render with custom hl overrides", function()
+  local bufnr
+
+  before_each(function()
+    bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "one", "two", "three" })
+  end)
+
+  after_each(function()
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
+  end)
+
+  local function extmarks(b)
+    local ns = vim.api.nvim_create_namespace("wishes")
+    return vim.api.nvim_buf_get_extmarks(b, ns, 0, -1, { details = true })
+  end
+
+  it("uses sign_hl for the sign and text_hl for the virtual text", function()
+    display.render(bufnr, {
+      { category = "fix", path = "x.lua", line_start = 1, line_end = 1, text = "t" },
+    }, {
+      virtual_text_prefix = " ",
+      categories = {
+        fix = {
+          sign = "F",
+          hl = "Comment",
+          sign_hl = "DiagnosticError",
+          text_hl = "DiagnosticWarn",
+          label = "fix",
+        },
+      },
+    })
+    local marks = extmarks(bufnr)
+    assert.equals("DiagnosticError", marks[1][4].sign_hl_group)
+    assert.equals("DiagnosticWarn", marks[1][4].virt_text[1][2])
+  end)
+
+  it("uses the derived hl group when fg is set", function()
+    local cfg = {
+      virtual_text_prefix = " ",
+      categories = {
+        fix = { sign = "F", hl = "Comment", fg = "#aabbcc", label = "fix" },
+      },
+    }
+    display.ensure_highlight_groups(cfg)
+    display.render(bufnr, {
+      { category = "fix", path = "x.lua", line_start = 1, line_end = 1, text = "t" },
+    }, cfg)
+
+    local marks = extmarks(bufnr)
+    local expected = display.derived_hl_name("fix")
+    assert.equals(expected, marks[1][4].sign_hl_group)
+    assert.equals(expected, marks[1][4].virt_text[1][2])
+  end)
+
+  it("falls back to hl when no overrides are set", function()
+    display.render(bufnr, {
+      { category = "fix", path = "x.lua", line_start = 1, line_end = 1, text = "t" },
+    }, {
+      virtual_text_prefix = " ",
+      categories = { fix = { sign = "F", hl = "DiagnosticError", label = "fix" } },
+    })
+    local marks = extmarks(bufnr)
+    assert.equals("DiagnosticError", marks[1][4].sign_hl_group)
+    assert.equals("DiagnosticError", marks[1][4].virt_text[1][2])
+  end)
+end)
+
 describe("wishes.display.clear", function()
   it("removes all wishes extmarks in a buffer", function()
     local bufnr = vim.api.nvim_create_buf(false, true)
